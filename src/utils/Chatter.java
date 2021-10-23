@@ -8,17 +8,25 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class Chatter {
-    private final int socket;
+    private int socket;
+    private final Boolean isServer;
     private ServerSocket serverSocket;
     private Socket clientSocket;
     private PrintWriter out;
     private BufferedReader in;
 
+    // Use this constructor to initialize a server-side connection
     public Chatter(int socket) {
+        isServer = true;
         this.socket = socket;
     }
 
+    // Use this constructor to initialize a client-side connection
+    public Chatter() {
+        isServer = false;
+    }
     public void openConnection() {
+        assert !isServer;
         try {
             serverSocket = new ServerSocket(socket);
             clientSocket = serverSocket.accept();
@@ -31,6 +39,7 @@ public class Chatter {
     }
 
     public void connectTo(String ip, int port) {
+        assert isServer;
         try {
             clientSocket = new Socket(ip, port);
             out = new PrintWriter(clientSocket.getOutputStream(), true);
