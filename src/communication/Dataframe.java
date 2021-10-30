@@ -3,10 +3,11 @@ package communication;
 /* Class to define and operate messages sent through sockets */
 public class Dataframe {
     public final static int BROADCAST = -1;
+    public final static String CLOSE = "close";
     private int src;
     private int timestamp;
     private String message;
-    private int dest;
+    private int dest; // src,timestamp,message,dest
 
     private static final String
             INVALID_FRAME = "ERROR. Invalid dataframe <%s>. It must have 3 comma separated values\n.";
@@ -36,6 +37,14 @@ public class Dataframe {
     public String toString() {
         // Comma separated values
         return src + "," + timestamp + "," + message;
+    }
+
+    public int getDest() {
+        return dest;
+    }
+
+    public void setDest(int dest) {
+        this.dest = dest;
     }
 
     public int getSrc() {

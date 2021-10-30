@@ -16,9 +16,10 @@ public class Chatter {
     private BufferedReader in;
 
     // Use this constructor to initialize a server-side connection
-    public Chatter(int socket) {
+    public Chatter(ServerSocket serverSocket) {
         isServer = true;
-        this.socket = socket;
+        // this.socket = socket;
+        this.serverSocket = serverSocket;
     }
 
     // Use this constructor to initialize a client-side connection
@@ -28,7 +29,7 @@ public class Chatter {
     public void openConnection() {
         assert !isServer;
         try {
-            serverSocket = new ServerSocket(socket);
+            // serverSocket = new ServerSocket(socket);
             clientSocket = serverSocket.accept();
             out = new PrintWriter(clientSocket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
