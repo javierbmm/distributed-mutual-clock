@@ -39,7 +39,7 @@ public class Chatter {
         }
     }
 
-    public void connectTo(String ip, int port) {
+    public Chatter connectTo(String ip, int port) {
         assert isServer;
         try {
             clientSocket = new Socket(ip, port);
@@ -49,6 +49,8 @@ public class Chatter {
             System.err.println("Error connecting to "+ip+":"+port);
             e.printStackTrace();
         }
+
+        return this;
     }
 
     public void stop() {

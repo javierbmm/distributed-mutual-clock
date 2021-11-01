@@ -48,6 +48,22 @@ public class RicartAndAgrawala implements Mutex {
     public boolean okayCS() {
         return false;
     }
+
+    @Override
+    public Mutex ID(int ID) {
+        return null;
+    }
+
+    @Override
+    public Mutex N(int N) {
+        return null;
+    }
+
+    @Override
+    public Mutex Chatter(Chatter chatter) {
+        return null;
+    }
+
     public void broadcastMsg(String msg, int timestamp){
         Dataframe dataframe = new Dataframe(myts, timestamp, msg, Dataframe.BROADCAST);
         chatter.send(dataframe.toString());
