@@ -71,8 +71,11 @@ public class Heavyweight {
                 dataframe = new Dataframe(line);
                 // TODO do stuff depending on frame
                 if(dataframe.getDest() == Dataframe.BROADCAST)
-                    broadcast(dataframe.getMessage());
-
+                    broadcast(dataframe);
+                else {
+                    Chatter dest = clientList.get(dataframe.getDest());
+                    dest.send(dataframe.toString());
+                }
             } while(!dataframe.getMessage().equals(Dataframe.CLOSE));
 
             //closes connection when client terminates the connection
@@ -80,9 +83,12 @@ public class Heavyweight {
             clientChatter.stop();
         }
 
-        private void broadcast(String msg) {
+        private void broadcast(Dataframe msg) {
             for(Chatter client : clientList) {
-                client.send(msg);
+                if(clientChatter.equals(client))
+                    continue;
+
+                client.send(msg.toString());
             }
         }
     }

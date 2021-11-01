@@ -3,14 +3,18 @@ package communication;
 /* Class to define and operate messages sent through sockets */
 public class Dataframe {
     public final static int BROADCAST = -1;
-    public final static String CLOSE = "close";
+    public final static String
+            CLOSE = "close",
+            ACK = "ack",
+            RELEASE = "release",
+            REQUEST = "request";
     private int src;
     private int timestamp;
     private String message;
     private int dest; // src,timestamp,message,dest
 
     private static final String
-            INVALID_FRAME = "ERROR. Invalid dataframe <%s>. It must have 3 comma separated values\n.";
+            INVALID_FRAME = "ERROR. Invalid dataframe <%s>. It must have 4 comma separated values.\n";
 
     public Dataframe(int src, int timestamp, String message, int dest) {
         this.src = src;
@@ -19,7 +23,10 @@ public class Dataframe {
         this.dest = dest;
     }
 
+    public Dataframe() { }
+
     public Dataframe(String frame) {
+        assert frame != null;
         String[] data = frame.split(",");
         if(data.length != 4)
             throw new RuntimeException(String.format(INVALID_FRAME, frame));
@@ -36,38 +43,42 @@ public class Dataframe {
 
     public String toString() {
         // Comma separated values
-        return src + "," + timestamp + "," + message;
+        return src + "," + timestamp + "," + message + "," + dest;
     }
 
     public int getDest() {
         return dest;
     }
 
-    public void setDest(int dest) {
+    public Dataframe destination(int dest) {
         this.dest = dest;
+        return this;
     }
 
     public int getSrc() {
         return src;
     }
 
-    public void setSrc(int src) {
+    public Dataframe source(int src) {
         this.src = src;
+        return this;
     }
 
     public int getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(int timestamp) {
+    public Dataframe timestamp(int timestamp) {
         this.timestamp = timestamp;
+        return this;
     }
 
     public String getMessage() {
         return message;
     }
 
-    public void setMessage(String message) {
+    public Dataframe message(String message) {
         this.message = message;
+        return this;
     }
 }

@@ -1,30 +1,56 @@
 package process;
 
 import communication.Chatter;
+import communication.Dataframe;
+import mutualexclusion.Mutex;
 
 public class Lightweight {
-    private final String myID;
+    private final int myID;
     private volatile int token;
-    private final Chatter server;
+    private final Chatter chatter;
+    private Mutex mutex;
+    private int amountReplicas;
 
-    public Lightweight(String myID, int serverPort) {
+    public Lightweight(int myID, int serverPort, int N) {
         this.myID = myID;
-        this.server = new Chatter();
+        Chatter chatter = new Chatter();
+        chatter.connectTo(null, serverPort);
+        this.chatter = chatter;
+        this.amountReplicas = N;
+        // Moving this line to a specific method (mutexMethod()):
+        // this.lamport = new Lamport(myID, N, chatter);
     }
 
-    private void execute() {
-    /* TODO: Review and implement
-    while(1) {
-        waitHeavyWeight();
-        requestCS();
-        for (int i = 0; i < 10; i++) {
-            printf("I am the process lightweight %s\n", myID);
-            espera1Segon();
+    public void execute() {
+        // Waiting a couple of seconds for other process to initialize
+        // TODO: Instead of waiting, processes must send messages to each other to announce that they are alive.
+        System.out.println("Waiting...");
+        wait(10000);
+        for (int i = 0; i < 2; i++) {
+            //waitHeavyWeight();
+            mutex.requestCS();
+            printMsg(); // print to screen (CS)
+            mutex.releaseCS();
+            // notifyHeavyWeight();
         }
-        releaseCS();
-        notifyHeavyWeight();
+
+        sendCloseMsg();
     }
-     */
+
+    private void sendCloseMsg() {
+        // Goodbye my lover
+        String bye = new Dataframe()
+                .timestamp(Integer.MAX_VALUE)
+                .source(myID)
+                .message(Dataframe.CLOSE)
+                .destination(Dataframe.BROADCAST)
+                .toString();
+
+        chatter.send(bye);
+        chatter.stop();
+    }
+
+    private void notifyHeavyWeight() {
     }
 
     public void printMsg() {
@@ -37,8 +63,7 @@ public class Lightweight {
     private static void wait(int ms) {
         try {
             Thread.sleep(ms);
-        }
-        catch(InterruptedException ex) {
+        } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
     }
@@ -56,4 +81,12 @@ public class Lightweight {
         this.token = token;
     }
 
+    public Lightweight mutexMethod(Mutex method) {
+        this.mutex = method
+                .ID(myID)
+                .N(amountReplicas)
+                .Chatter(chatter);
+
+        return this;
+    }
 }
