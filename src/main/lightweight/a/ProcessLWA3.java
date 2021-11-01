@@ -1,19 +1,12 @@
 package main.lightweight.a;
 
-import communication.Chatter;
-import communication.Dataframe;
+import process.Lightweight;
 import utils.constants;
 
 public class ProcessLWA3 {
-
     public static void main(String[] args) {
-        Chatter chatter = new Chatter();
-        chatter.connectTo(null, constants.PORT_A);
-        String inputString = "";
+        Lightweight lightweight = new Lightweight(2, constants.PORT_A, constants.AMOUNT_PROCESS_A);
 
-        while(!inputString.equals(Dataframe.CLOSE)) {
-            inputString = chatter.read();
-            System.out.println(inputString);
-        }
+        lightweight.execute();
     }
 }
