@@ -9,11 +9,13 @@ import java.net.Socket;
 
 public class Chatter {
     private int socket;
+    private String ip;
     private final Boolean isServer;
     private ServerSocket serverSocket;
     private Socket clientSocket;
     private PrintWriter out;
     private BufferedReader in;
+    private boolean debug = false;
 
     // Use this constructor to initialize a server-side connection
     public Chatter(ServerSocket serverSocket) {
@@ -26,6 +28,7 @@ public class Chatter {
     public Chatter() {
         isServer = false;
     }
+
     public void openConnection() {
         assert !isServer;
         try {
@@ -43,6 +46,8 @@ public class Chatter {
         assert isServer;
         try {
             clientSocket = new Socket(ip, port);
+            socket = port;
+            this.ip = ip;
             out = new PrintWriter(clientSocket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
         } catch (IOException e) {
@@ -76,6 +81,13 @@ public class Chatter {
     }
 
     public void send(String message) {
+        if(debug)
+            System.out.println("[SENDING]: " + message);
         out.println(message);
+    }
+
+    public Chatter debug(boolean mode) {
+        debug = true;
+        return this;
     }
 }

@@ -12,7 +12,7 @@ public class Lamport implements Mutex {
     private int ID;
     private Chatter chatter;
     private volatile int ackCounter;
-    private volatile boolean hasReleased = false;
+    private volatile boolean running = false;
 
     public Lamport(int ID, int N, Chatter chatter) {
         this.ID = ID;
@@ -22,6 +22,7 @@ public class Lamport implements Mutex {
         for(int i=0; i<N; i++) {
             queue[i] = Integer.MAX_VALUE;
         }
+        new Handler().start();
     }
 
     public Lamport() {
@@ -29,19 +30,18 @@ public class Lamport implements Mutex {
 
     @Override
     public synchronized void requestCS() {
+        running = true;
         directClock.tick();
         queue[ID] = directClock.getValue(ID);
         broadcastMsg("request", queue[ID]);
-        waitAck(); // Waiting for everyone else to give me their 'ack' and timestamp.
+        //waitAck(); // Waiting for everyone else to give me their 'ack' and timestamp.
         while(!okayCS()) {
-            myWait();
+            try {
+                wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
-    }
-
-    private void myWait() {
-        String line = chatter.read();
-        Dataframe aux = new Dataframe(line);
-        handleMsg(aux);
     }
 
     @Override
@@ -82,6 +82,7 @@ public class Lamport implements Mutex {
     @Override
     public Mutex Chatter(Chatter chatter) {
         this.chatter = chatter;
+        new Handler().start();
 
         return this;
     }
@@ -96,27 +97,25 @@ public class Lamport implements Mutex {
     }
 
     public synchronized void handleMsg(Dataframe df) {
-        // todo this might be inside a thread
         int timeStamp = df.getTimestamp();
         int src = df.getSrc();
         String msg = df.getMessage();
         directClock.receiveAction(src, timeStamp);
-        System.out.println("Received this message: <"+df+">");
         switch (msg) {
             case Dataframe.REQUEST -> {
                 queue[src] = timeStamp;
-                chatter.send(Dataframe.parse(ID, timeStamp, "ack", src).toString());
+                chatter.send(Dataframe.parse(ID, timeStamp, Dataframe.ACK, src).toString());
             }
             case Dataframe.ACK -> ackCounter++;
-            case Dataframe.RELEASE -> hasReleased = true;
+            case Dataframe.RELEASE -> queue[src] = Integer.MAX_VALUE;
         }
+        notify();
     }
 
     public void waitAck() {
         ackCounter = 0;
         while(ackCounter < queue.length-1) {
-            myWait();
-            System.out.println("ack: "+ackCounter);
+            //myWait();
         }
     }
 
@@ -128,5 +127,29 @@ public class Lamport implements Mutex {
                 .destination(Dataframe.BROADCAST);
 
         chatter.send(dataframe.toString());
+    }
+
+    private synchronized boolean isRunning() { return running; }
+
+    private class Handler extends Thread {
+        //constructor
+        public Handler() {
+        }
+
+        @Override
+        public void run() {
+            while (true) {
+                if (isRunning()) {
+                    String line = chatter.read();
+                    if(line.equals(Dataframe.STOP)) {
+                        running = false;
+                        continue;
+                    }
+                    // if received message is "do" meaning that comes from heavyweight, continue
+                    Dataframe aux = new Dataframe(line);
+                    handleMsg(aux);
+                }
+            }
+        }
     }
 }

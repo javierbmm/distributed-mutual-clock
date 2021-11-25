@@ -7,7 +7,10 @@ public class Dataframe {
             CLOSE = "close",
             ACK = "ack",
             RELEASE = "release",
-            REQUEST = "request";
+            REQUEST = "request",
+            STOP = "stop",
+            DONE = "done",
+            START = "start";
     private int src;
     private int timestamp;
     private String message;

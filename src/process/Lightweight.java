@@ -4,37 +4,53 @@ import communication.Chatter;
 import communication.Dataframe;
 import mutualexclusion.Mutex;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 public class Lightweight {
     private final int myID;
     private volatile int token;
     private final Chatter chatter;
+    private final String name;
     private Mutex mutex;
     private int amountReplicas;
 
-    public Lightweight(int myID, int serverPort, int N) {
+    public Lightweight(String name, int myID, int serverPort, int N) {
         this.myID = myID;
-        Chatter chatter = new Chatter();
-        chatter.connectTo(null, serverPort);
-        this.chatter = chatter;
+        this.chatter = greetings(serverPort);
         this.amountReplicas = N;
-        // Moving this line to a specific method (mutexMethod()):
-        // this.lamport = new Lamport(myID, N, chatter);
+        this.name = name;
     }
 
     public void execute() {
-        // Waiting a couple of seconds for other process to initialize
-        // TODO: Instead of waiting, processes must send messages to each other to announce that they are alive.
-        System.out.println("Waiting...");
-        wait(10000);
-        for (int i = 0; i < 2; i++) {
-            //waitHeavyWeight();
+        while (true) {
+            waitHeavyweight();
             mutex.requestCS();
             printMsg(); // print to screen (CS)
             mutex.releaseCS();
-            // notifyHeavyWeight();
+            notifyHeavyweight();
         }
 
-        sendCloseMsg();
+        //sendCloseMsg();
+    }
+
+    private Chatter greetings(int serverPort){
+        Chatter chatter = new Chatter();
+        chatter.connectTo(null, serverPort);
+        chatter.send(String.valueOf(myID));
+
+        return chatter;
+    }
+
+    private void waitHeavyweight() {
+        String msg = "" ;
+        while(!msg.equals(Dataframe.START))
+            msg = chatter.read();
+    }
+
+    private void notifyHeavyweight() {
+        Dataframe df = Dataframe.parse(-1, -1, Dataframe.DONE, -1);
+        chatter.send(df.toString());
     }
 
     private void sendCloseMsg() {
@@ -50,14 +66,15 @@ public class Lightweight {
         chatter.stop();
     }
 
-    private void notifyHeavyWeight() {
-    }
-
     public void printMsg() {
-        for (int i = 0; i < 10; i++) {
-            System.out.println("I am the process lightweight" + myID);
+        for (int i = 1; i <= 10; i++) {
+            String timeStamp = "[" + new SimpleDateFormat("HH.mm.ss").format(new Date()) + "]";
+            String index = "[" + i + "]";
+            String nameID = name + (myID+1);
+            System.out.println(index + timeStamp + " I am the process lightweight " + nameID);
             wait(1000);
         }
+        System.out.println("_".repeat(24));
     }
 
     private static void wait(int ms) {
@@ -68,25 +85,17 @@ public class Lightweight {
         }
     }
 
-    public void waitHeavyWeight() {
-        while (token == -1)
-            ;
-    }
-
-    public int getToken() {
-        return token;
-    }
-
-    public void setToken(int token) {
-        this.token = token;
-    }
-
     public Lightweight mutexMethod(Mutex method) {
         this.mutex = method
                 .ID(myID)
                 .N(amountReplicas)
                 .Chatter(chatter);
 
+        return this;
+    }
+
+    public Lightweight debug(boolean mode) {
+        chatter.debug(mode);
         return this;
     }
 }

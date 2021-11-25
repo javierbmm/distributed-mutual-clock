@@ -2,75 +2,106 @@ package process;
 
 import communication.Chatter;
 import communication.Dataframe;
+import mutualexclusion.Token;
+import utils.constants;
+import utils.constants.*;
 
+import javax.xml.crypto.Data;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Heavyweight {
-    private int answers = 0;
-    private final static int NUM_LIGHTWEIGHTS = 3;
+    private volatile int answers = 0;
+    private final int NUM_LIGHTWEIGHTS;
     private ServerSocket serverSocket;
+    private Boolean debug = false;
+    private final Token token;
+    private final Chatter server;
+    private final int ID;
+    private Map<Integer, Chatter> clientList = new HashMap<Integer, Chatter>();
 
-    public Heavyweight() {
+    public Heavyweight(int num_lightweights, int id, Chatter chatter) {
+        this.NUM_LIGHTWEIGHTS = num_lightweights;
+        ID = id;
+        server = chatter;
+        token = new Token(ID, constants.LEADER, server);
     }
 
-    public void listen() {
+    public Heavyweight debug(boolean mode) {
+        this.debug = mode;
+        return this;
+    }
+
+    public Heavyweight listen(int port) {
         try {
-            serverSocket = new ServerSocket(utils.constants.PORT_A);
+            serverSocket = new ServerSocket(port);
            // serverSocket.setSoTimeout(500);
         }
         catch(IOException e){
             e.printStackTrace();
-            System.out.println("Server error");
+            System.err.println("Server error");
         }
 
-        for(int i=0; i<3; i++) {
-            Chatter chatter = new Chatter(serverSocket);
+        for(int i=0; i<NUM_LIGHTWEIGHTS; i++) {
+            Chatter chatter = new Chatter(serverSocket).debug(debug);
             chatter.openConnection();
-            new Handler(chatter)
+            // Greetings message to store the client ID
+            String id = chatter.read();
+            new Handler(chatter, Integer.parseInt(id))
                 .start();
         }
+
+        return this;
     }
 
-    /* TODO: review and implement
-    while(1)
-    {
-        while (!token) listenHeavyweight();
-        for (int i = 0; i < NUM_LIGHTWEIGHTS; i++) sendActionToLightweight();
-        while (answersfromLightweigth < NUM_LIGHTWEIGHTS) listenLightweight();
-        token = 0;
-        sendTokenToHeavyweight();
+    public void execute() {
+        while(true) {
+            answers = 0;
+            token.requestCS();
+            System.out.println("I have the Token");
+            sendActionToLightweight(Dataframe.START);
+            while (answers < NUM_LIGHTWEIGHTS) ;
+//            sendTokenToHeavyweight();
+            sendActionToLightweight(Dataframe.STOP);
+            token.releaseCS();
+        }
     }
 
-     */
 
-    private void listenLightweight() {
-        // wait -> listen -> send broadcast -> go next
+    private void sendActionToLightweight(String action) {
+        for(Chatter client : clientList.values()) {
+            client.send(action);
+        }
     }
 
     private class Handler extends Thread{
         private ServerSocket socket;
         private final Chatter clientChatter;
-        private static List<Chatter> clientList = new ArrayList<>();
 
         //constructor
-        public Handler(Chatter chatter) {
+        public Handler(Chatter chatter, int id) {
             this.clientChatter = chatter;
-            clientList.add(chatter);
+            clientList.put(id, chatter);
         }
 
         @Override
         public void run() {
             Dataframe dataframe;
-            //print whatever client is saying as long as it is not "Over"
+            //print whatever client is saying as long as it is not "Close"
             String line = "";
             do {
                 line = clientChatter.read();
                 dataframe = new Dataframe(line);
+                if(debug)
+                    System.out.println("[SERVER]: Received "+dataframe);
                 // TODO do stuff depending on frame
-                if(dataframe.getDest() == Dataframe.BROADCAST)
+                if(dataframe.getMessage().equals(Dataframe.DONE))
+                    answers++;
+                else if(dataframe.getDest() == Dataframe.BROADCAST)
                     broadcast(dataframe);
                 else {
                     Chatter dest = clientList.get(dataframe.getDest());
@@ -84,7 +115,7 @@ public class Heavyweight {
         }
 
         private void broadcast(Dataframe msg) {
-            for(Chatter client : clientList) {
+            for(Chatter client : clientList.values()) {
                 if(clientChatter.equals(client))
                     continue;
 
